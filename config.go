@@ -11,6 +11,7 @@ type Config struct {
     ExcludeModel   []string   `json:"exclude_model"`
     Models         []string   `json:"models"`
     TimePeriod     string     `json:"time_period"`
+    DbType         string     `json:"db_type"`
     DbDsn          string     `json:"db_dsn"`
 }
 
