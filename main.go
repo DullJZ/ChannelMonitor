@@ -289,7 +289,7 @@ func updateModels(channelID int, models []string, modelMapping map[string]string
 			return result.Error
 		}
 		// 修改
-		result = tx.Table("abilities").Where("channel_id = ? AND model IN (?)", channelID, models).Update("enabled", 1)
+		result = tx.Table("abilities").Where("channel_id = ? AND model IN (?)", channelID, models).Update("enabled", true)
 		if result.Error != nil {
 			tx.Rollback()
 			return result.Error
