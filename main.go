@@ -16,13 +16,14 @@ import (
 )
 
 type Channel struct {
-	ID           int
-	Type         int
-	Name         string
-	BaseURL      string
-	Key          string
-	Status       int
-	ModelMapping map[string]string
+	ID              int               `gorm:"column:id"`
+	Type            int               `gorm:"column:type"`
+	Name            string            `gorm:"column:name"`
+	BaseURL         string            `gorm:"column:base_url"`
+	Key             string            `gorm:"column:key"`
+	Status          int               `gorm:"column:status"`
+	ModelMapping    map[string]string `gorm:"-"`
+	ModelMappingRaw string            `gorm:"column:model_mapping"`
 }
 
 var (
@@ -31,23 +32,16 @@ var (
 )
 
 func fetchChannels() ([]Channel, error) {
-	query := "SELECT id, type, name, base_url, `key`, status, model_mapping FROM channels"
-	rows, err := db.Raw(query).Rows()
-	if err != nil {
+	var channels []Channel
+	if err := db.Table("channels").Select("id, type, name, base_url, key, status, model_mapping").Find(&channels).Error; err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var channels []Channel
-	for rows.Next() {
-		var c Channel
-		var modelMapping string
-		if err := rows.Scan(&c.ID, &c.Type, &c.Name, &c.BaseURL, &c.Key, &c.Status, &modelMapping); err != nil {
-			return nil, err
-		}
+	var result []Channel
+	for _, c := range channels {
 		c.ModelMapping = make(map[string]string)
-		if modelMapping != "" {
-			if err := json.Unmarshal([]byte(modelMapping), &c.ModelMapping); err != nil {
+		if c.ModelMappingRaw != "" {
+			if err := json.Unmarshal([]byte(c.ModelMappingRaw), &c.ModelMapping); err != nil {
 				return nil, err
 			}
 		}
@@ -67,11 +61,11 @@ func fetchChannels() ([]Channel, error) {
 			log.Printf("渠道 %s(ID:%d) 在排除列表中，跳过\n", c.Name, c.ID)
 			continue
 		}
-		channels = append(channels, c)
+		result = append(result, c)
 	}
-	log.Printf("获取到 %d 个渠道\n", len(channels))
-	log.Printf("准备测试的渠道：%v\n", channels)
-	return channels, nil
+	log.Printf("获取到 %d 个渠道\n", len(result))
+	log.Printf("准备测试的渠道：%v\n", result)
+	return result, nil
 }
 
 func contains(slice []int, item int) bool {
@@ -105,7 +99,7 @@ func testModels(channel Channel, wg *sync.WaitGroup, mu *sync.Mutex) {
 			log.Println("强制使用内置模型列表")
 			// 从数据库获取模型列表
 			var models string
-			if err := db.Raw("SELECT models FROM channels WHERE id = ?", channel.ID).Scan(&models).Error; err != nil {
+			if err := db.Table("channels").Select("models").Where("id = ?", channel.ID).Scan(&models).Error; err != nil {
 				log.Printf("获取渠道 %s(ID:%d) 的模型列表失败：%v\n", channel.Name, channel.ID, err)
 				return
 			}
@@ -248,7 +242,7 @@ func testModels(channel Channel, wg *sync.WaitGroup, mu *sync.Mutex) {
 func updateModels(channelID int, models []string, modelMapping map[string]string) error {
 	// 获取旧的模型列表
 	var oldModels string
-	if err := db.Raw("SELECT models FROM channels WHERE id = ?", channelID).Scan(&oldModels).Error; err != nil {
+	if err := db.Table("channels").Select("models").Where("id = ?", channelID).Scan(&oldModels).Error; err != nil {
 		return err
 	}
 	oldModelsList := strings.Split(oldModels, ",")
@@ -274,16 +268,14 @@ func updateModels(channelID int, models []string, modelMapping map[string]string
 
 		// 更新channels表
 		modelsStr := strings.Join(models, ",")
-		query := "UPDATE channels SET models = ? WHERE id = ?"
-		result := tx.Exec(query, modelsStr, channelID)
+		result := tx.Table("channels").Where("id = ?", channelID).Update("models", modelsStr)
 		if result.Error != nil {
 			tx.Rollback()
 			return result.Error
 		}
 
 		// 如果有名为refresh的渠道，删除
-		query = "DELETE FROM channels WHERE name = 'refresh'"
-		result = tx.Exec(query)
+		result = tx.Table("channels").Where("name = ?", "refresh").Delete(nil)
 		if result.Error != nil {
 			tx.Rollback()
 			return result.Error
@@ -291,15 +283,13 @@ func updateModels(channelID int, models []string, modelMapping map[string]string
 
 		// 更新abilities表
 		// 硬删除
-		query = "DELETE FROM abilities WHERE channel_id = ? AND model NOT IN (?)"
-		result = tx.Exec(query, channelID, models)
+		result = tx.Table("abilities").Where("channel_id = ? AND model NOT IN (?)", channelID, models).Delete(nil)
 		if result.Error != nil {
 			tx.Rollback()
 			return result.Error
 		}
 		// 修改
-		query = "UPDATE abilities SET enabled = 1 WHERE channel_id = ? AND model IN (?)"
-		result = tx.Exec(query, channelID, models)
+		result = tx.Table("abilities").Where("channel_id = ? AND model IN (?)", channelID, models).Update("enabled", 1)
 		if result.Error != nil {
 			tx.Rollback()
 			return result.Error
@@ -396,7 +386,7 @@ func updateModels(channelID int, models []string, modelMapping map[string]string
 	added, removed := compareModels(oldModelsList, models)
 	if len(added) > 0 || len(removed) > 0 {
 		var channelName string
-		if err := db.Raw("SELECT name FROM channels WHERE id = ?", channelID).Scan(&channelName).Error; err != nil {
+		if err := db.Table("channels").Select("name").Where("id = ?", channelID).Scan(&channelName).Error; err != nil {
 			log.Printf("获取渠道名称失败: %v", err)
 		}
 
