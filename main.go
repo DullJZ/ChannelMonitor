@@ -33,7 +33,7 @@ var (
 
 func fetchChannels() ([]Channel, error) {
 	var channels []Channel
-	if err := db.Table("channels").Select("id, type, name, base_url, key, status, model_mapping").Find(&channels).Error; err != nil {
+	if err := db.Table("channels").Find(&channels).Error; err != nil {
 		return nil, err
 	}
 
