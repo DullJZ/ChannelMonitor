@@ -21,6 +21,7 @@ type Config struct {
 	TimePeriod        string   `json:"time_period" yaml:"time_period"`
 	MaxConcurrent     int      `json:"max_concurrent" yaml:"max_concurrent"`
 	RPS               int      `json:"rps" yaml:"rps"`
+	RPM               int      `json:"rpm" yaml:"rpm"`
 	Timeout           int      `json:"timeout" yaml:"timeout"`
 	DbType            string   `json:"db_type" yaml:"db_type"`
 	DbDsn             string   `json:"db_dsn" yaml:"db_dsn"`
@@ -112,7 +113,8 @@ func loadConfig() (*Config, error) {
 		config.MaxConcurrent = 5
 	}
 
-	if config.RPS == 0 {
+	// 仅当 rps 和 rpm 都未配置时，才给 rps 设默认值，以便用户可以通过只配置 rpm 来禁用 rps
+	if config.RPS == 0 && config.RPM == 0 {
 		config.RPS = 5
 	}
 

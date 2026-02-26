@@ -16,7 +16,7 @@ Channel Monitor is a tool designed for monitoring OneAPI/NewAPI channels. It dir
 - [x] Support configurable intervals
 - [x] Support multiple database types, including MySQL, SQLite, PostgreSQL, and SQL Server
 - [x] Concurrent testing
-- [x] Request rate limiting at the second level
+- [x] Request rate limiting (per-second RPS and per-minute RPM)
 - [x] Support Uptime Kuma, push URL during testing to visualize model availability
 - [x] Support update notifications via SMTP email and Telegram Bot
 - [x] Support both JSON and YAML configuration formats
@@ -105,6 +105,7 @@ The configuration file can be either `config.json`, `config.yaml`, or `config.ym
   "time_period": "1h",
   "max_concurrent": 5,
   "rps": 5,
+  "rpm": 0,
   "timeout": 10,
   "db_type": "YOUR_DB_TYPE",
   "db_dsn": "YOUR_DB_DSN",
@@ -167,6 +168,7 @@ force_inside_models: false
 time_period: 1h
 max_concurrent: 5
 rps: 5
+rpm: 0
 timeout: 10
 db_type: YOUR_DB_TYPE
 db_dsn: YOUR_DB_DSN
@@ -209,7 +211,8 @@ Configuration explanation:
 - force_inside_models: If true, only the models set in OneAPI will be tested, and the model list will not be fetched. Default is false. If force_models is true, this option is invalid.
 - time_period: Interval for testing model availability, recommended not less than 30 minutes, accepts time formats s, m, h
 - max_concurrency: Maximum number of concurrent tests within a channel, default is 5
-- rps: Requests per second within a channel, default is 5
+- rps: Requests per second within a channel, default is 5 (when neither rps nor rpm is configured). Set to 0 to disable
+- rpm: Requests per minute within a channel, default is 0 (disabled). When both rps and rpm are set, the stricter limit takes effect
 - timeout: Request timeout (seconds), default is 10
 - db_type: Database type, including mysql, sqlite, postgres, sqlserver
 - db_dsn: Database DSN string, the format varies by database type. Examples below

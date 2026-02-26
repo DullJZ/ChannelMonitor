@@ -153,7 +153,28 @@ func testModels(channel Channel, wg *sync.WaitGroup, mu *sync.Mutex) {
 	modelMu := sync.Mutex{}
 	sem := make(chan struct{}, config.MaxConcurrent)
 
-	limiter := rate.NewLimiter(rate.Limit(config.RPS), config.RPS)
+	// 计算最终限流速率：rps 和 rpm 都启用时取更严格（更小速率）的那个
+	// 统一使用 rate.Every() 以避免浮点精度问题
+	var effectiveRate rate.Limit
+	var effectiveBurst int
+
+	if config.RPS > 0 {
+		effectiveRate = rate.Every(time.Second / time.Duration(config.RPS))
+		effectiveBurst = config.RPS
+	}
+	if config.RPM > 0 {
+		rpmRate := rate.Every(time.Minute / time.Duration(config.RPM))
+		if effectiveRate == 0 || rpmRate < effectiveRate {
+			effectiveRate = rpmRate
+			effectiveBurst = 1
+		}
+	}
+	if effectiveRate == 0 {
+		effectiveRate = rate.Inf
+		effectiveBurst = 0
+	}
+
+	limiter := rate.NewLimiter(effectiveRate, effectiveBurst)
 
 	for _, model := range modelList {
 		modelWg.Add(1)

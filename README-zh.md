@@ -16,7 +16,7 @@ Channel Monitor 是一个用于监控OneAPI/NewAPI渠道的工具，它直接读
 - [x] 支持间隔时间配置
 - [x] 支持多种数据库类型（MySQL、SQLite、PostgreSQL、SQL Server）
 - [x] 并发测试
-- [x] 秒级的请求速率限制
+- [x] 请求速率限制（支持每秒 RPS 和每分钟 RPM）
 - [x] 支持Uptime Kuma， 在测试时Push URL来可视化模型可用性
 - [x] 支持更新推送，包括SMTP邮件和Telegram Bot
 - [x] 支持JSON和YAML两种配置文件格式
@@ -106,6 +106,7 @@ docker-compose up -d
   "time_period": "1h",
   "max_concurrent": 5,
   "rps": 5,
+  "rpm": 0,
   "timeout": 10,
   "db_type": "YOUR_DB_TYPE",
   "db_dsn": "YOUR_DB_DSN",
@@ -168,6 +169,7 @@ force_inside_models: false
 time_period: 1h
 max_concurrent: 5
 rps: 5
+rpm: 0
 timeout: 10
 db_type: YOUR_DB_TYPE
 db_dsn: YOUR_DB_DSN
@@ -210,7 +212,8 @@ notification:
 - force_inside_models: 如果为true，将强制只测试OneAPI设置的模型，不再获取模型列表，默认为false。如果force_models为true，此项无效 
 - time_period: 模型可用性测试的时间间隔，建议不小于30分钟，接收的时间格式为s、m、h
 - max_concurrency: 在一个渠道内测试的最大并发数，默认为5
-- rps: 在一个渠道内测试的每秒请求数，默认为5
+- rps: 在一个渠道内每秒请求数，默认为5（当 rps 和 rpm 都未配置时）。设为 0 可禁用
+- rpm: 在一个渠道内每分钟请求数，默认为 0（禁用）。rps 和 rpm 同时设置时，取更严格的限制生效
 - timeout: 测试时的超时时间（秒），默认为 10
 - db_type: 数据库类型，包括mysql、sqlite、postgres、sqlserver
 - db_dsn: 数据库DSN字符串，不同数据库类型的DSN格式不同，示例如下
