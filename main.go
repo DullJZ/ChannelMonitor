@@ -64,7 +64,9 @@ func fetchChannels() ([]Channel, error) {
 		result = append(result, c)
 	}
 	log.Printf("获取到 %d 个渠道\n", len(result))
-	log.Printf("准备测试的渠道：%v\n", result)
+	for _, channel := range result {
+		log.Printf("准备测试的渠道：%s(ID:%d)\n", channel.Name, channel.ID)
+	}
 	return result, nil
 }
 
